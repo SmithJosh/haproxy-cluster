@@ -1,0 +1,69 @@
+#!/bin/sh
+#
+# /etc/init.d/app
+# Demo app service
+#
+# chkconfig: 2345 95 05
+# description: Demo app service
+
+# source function library
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+prog="app"
+
+start() {	
+  echo -n "Starting $prog:"
+  cd /opt/app && screen -dmS $prog "python -m SimpleHTTPServer 8993"
+  PID=$!
+	RETVAL=$?
+  [ "$PID" != 0 ] && echo "$PID" > /var/run/app.pid 
+	[ "$RETVAL" = 0 ] && touch /var/lock/subsys/$prog
+	echo
+}
+
+stop() {
+	echo -n "Stopping $prog:"
+  PID=$(cat /var/run/app.pid)
+  kill $PID
+	RETVAL=$?
+	[ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/$prog && rm -f /var/run/app.pid
+	echo
+}
+
+status() {
+  if [ ! -e /var/run/app.pid ]; then
+    echo "$prog is stopped"
+    return 3
+  else
+    PID=$(cat /var/run/app.pid)
+    if [[ $PID -ne 0 ]] && ps -p $PID > /dev/null; then
+      echo "$prog is running"
+      return 0
+    else
+      echo "$prog is dead and /var/run pid file exists"
+      return 1
+    fi
+  fi
+}
+
+case "$1" in	
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+  status)
+    status
+    RETVAL=$?
+    ;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload|condrestart|status}"
+		RETVAL=1
+esac
+exit $RETVAL
